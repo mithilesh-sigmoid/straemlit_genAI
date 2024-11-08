@@ -378,7 +378,9 @@ def main():
         st.subheader("2. Data Source")
         data_source = st.radio(
             "Choose Data Source:",
-            ["Use Default Data", "Upload Custom File"]
+            ["Use Default Data", "Upload Custom File"],
+            disabled=True,
+            index=0
         )
         
         # Reset state if data source changes
