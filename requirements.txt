@@ -6,3 +6,4 @@ seaborn
 requests
 Pillow
 python-docx
+scikit-learn
