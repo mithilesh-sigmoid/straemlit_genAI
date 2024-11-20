@@ -461,8 +461,8 @@ def get_sample_queries(data_source):
             "What is the trend in average days of inventory on hand?"
         ],
         'Inbound_Data.csv': [
-            "What is the utilization in each tradelane/tradeline/route over a specific time period?",
-            "What is the total cost in each tradelane/tradeline/route over a specific time period?",
+            "What is the utilization in each tradelane for top 15 tradelane by pallets?",
+            "What is the total cost in each route from Nov 2023 to Jan 2024? Consider top 10 routes with highest total pallets.",
             "What is the monthly trend of above metrics?",
             "What is the cost breakdown by Company?",
             "What is the proportion of FTL/LTL by route?",
@@ -475,7 +475,7 @@ def get_sample_queries(data_source):
             "Which routes/delivery supplier/delivery groups have higher % of late collection?",
             "What is the average delay in delivery on a particular route by delivery supplier?",
             "What is the average delay in collection on a particular route by delivery supplier?"
-        ]      
+        ]        
     }
     return queries.get(data_source, [])
                 
