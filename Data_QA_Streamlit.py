@@ -21,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-logo = Image.open("perrigo-logo.png")
+logo = Image.open("Images/perrigo-logo.png")
 st.image(logo, width=120)
 
 # Custom CSS
@@ -69,27 +69,24 @@ def create_word_document(chat_history):
     
     # Add each analysis to the document
     for idx, chat in enumerate(reversed(chat_history), 1):
-        # Add query section
+        # Add query section with data source
         doc.add_heading(f'Query: {chat["query"]}', level=1)
-        doc.add_paragraph(f'Time: {chat["timestamp"]}')
+        doc.add_paragraph(f'Data Source: {chat.get("data_source", "Not specified")}')
         
-        # Add approach section if exists
+        # Rest of the function remains the same
         if chat['approach']:
             doc.add_heading('Approach:', level=2)
             doc.add_paragraph(chat['approach'])
         
-        # Add results section if exists
         if chat['answer']:
             doc.add_heading('Results:', level=2)
             doc.add_paragraph(chat['answer'])
         
-        # Add visualization if exists
         if chat['figure']:
             doc.add_heading('Visualization:', level=2)
             image_stream = save_figure_to_image(chat['figure'])
             doc.add_picture(image_stream, width=Inches(6))
         
-        # Add separator between analyses
         doc.add_paragraph('-' * 50)
     
     return doc
@@ -128,17 +125,17 @@ def extract_code_segments(response_text):
     # Extract content between <code> tags
     code_match = re.search(r'<code>(.*?)</code>', response_text, re.DOTALL)
     if code_match:
-        segments['analysis_code'] = code_match.group(1).strip()
+        segments['code'] = code_match.group(1).strip()
     
     # Extract content between <chart> tags
     chart_match = re.search(r'<chart>(.*?)</chart>', response_text, re.DOTALL)
     if chart_match:
-        segments['chart_code'] = chart_match.group(1).strip()
+        segments['chart'] = chart_match.group(1).strip()
     
     # Extract content between <answer> tags
     answer_match = re.search(r'<answer>(.*?)</answer>', response_text, re.DOTALL)
     if answer_match:
-        segments['answer_template'] = answer_match.group(1).strip()
+        segments['answer'] = answer_match.group(1).strip()
     
     return segments
 
@@ -147,7 +144,9 @@ def execute_analysis(df, response_text):
     results = {
         'approach': None,
         'answer': None,
-        'figure': None
+        'figure': None,
+        'code': None,
+        'chart_code': None
     }
     
     try:
@@ -158,28 +157,57 @@ def execute_analysis(df, response_text):
             st.error("No code segments found in the response")
             return results
         
-        # Store the approach
+        # Store the approach and raw code
         if 'approach' in segments:
             results['approach'] = segments['approach']
+        if 'code' in segments:
+            results['code'] = segments['code']
+        if 'chart' in segments:
+            results['chart_code'] = segments['chart']
         
         # Create a single namespace for all executions
         namespace = {'df': df, 'pd': pd, 'plt': plt, 'sns': sns}
         
         # Execute analysis code and answer template
-        if 'analysis_code' in segments and 'answer_template' in segments:
+        if 'code' in segments and 'answer' in segments:
+            # Properly dedent the code before execution
+            code_lines = segments['code'].strip().split('\n')
+            # Find minimum indentation
+            min_indent = float('inf')
+            for line in code_lines:
+                if line.strip():  # Skip empty lines
+                    indent = len(line) - len(line.lstrip())
+                    min_indent = min(min_indent, indent)
+            # Remove consistent indentation
+            dedented_code = '\n'.join(line[min_indent:] if line.strip() else '' 
+                                    for line in code_lines)
+            
+            # Combine code with answer template
             combined_code = f"""
-{segments['analysis_code']}
+{dedented_code}
 
 # Format the answer template
-answer_text = f'''{segments['answer_template']}'''
+answer_text = f'''{segments['answer']}'''
 """
             exec(combined_code, namespace)
             results['answer'] = namespace.get('answer_text')
         
         # Execute chart code if present
-        if 'chart_code' in segments:
+        if 'chart' in segments:
+            # Properly dedent the chart code
+            chart_lines = segments['chart'].strip().split('\n')
+            # Find minimum indentation
+            min_indent = float('inf')
+            for line in chart_lines:
+                if line.strip():  # Skip empty lines
+                    indent = len(line) - len(line.lstrip())
+                    min_indent = min(min_indent, indent)
+            # Remove consistent indentation
+            dedented_chart = '\n'.join(line[min_indent:] if line.strip() else '' 
+                                     for line in chart_lines)
+            
             plt.figure(figsize=(10, 6))
-            exec(segments['chart_code'], namespace)
+            exec(dedented_chart, namespace)
             fig = plt.gcf()
             results['figure'] = fig
             plt.close()
@@ -187,11 +215,40 @@ answer_text = f'''{segments['answer_template']}'''
         return results
         
     except Exception as e:
-        st.error(f"Error during execution: {e}")
+        st.error(f"Error during execution: {str(e)}")
         return results
+    
 
-def analyze_data_with_execution(df, question, api_key):
-   
+def get_prompt_file(data_source):
+    """Return the appropriate prompt file based on the data source."""
+    prompt_mapping = {
+        'Outbound_Data.csv': 'Prompts/Prompt1.txt',
+        'Inventory_Batch.csv': 'Prompts/Prompt2.txt',
+        'Inbound_Data.csv': 'Prompts/Prompt3.txt'
+    }
+    return prompt_mapping.get(data_source)
+
+
+def analyze_data_with_execution(df, question, api_key, data_source):
+    # Get the appropriate prompt file based on data source
+    prompt_file = get_prompt_file(data_source)
+    
+    if not prompt_file:
+        st.error("Unable to determine prompt file for the selected data source!")
+        return None
+
+    # Read the prompt template from file
+    try:
+        with open(prompt_file, 'r') as file:
+            data_description = file.read().strip()
+    except FileNotFoundError:
+        st.error(f"{prompt_file} file not found!")
+        return None
+    except Exception as e:
+        st.error(f"Error reading {prompt_file}: {str(e)}")
+        return None
+
+    
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}"
@@ -210,25 +267,7 @@ def analyze_data_with_execution(df, question, api_key):
 You are an AI assistant tasked with analyzing a dataset to provide code for calculating the final answer and generating relevant visualization.
 I will provide you with the data in dataframe format, as well as a question to answer based on the data.
 
-Here is an example of what one row of the data looks like in json format but I will provide you with first 5 rows of the dataframe inside <data> tags:
-{{
-      "PROD_TYPE": "AMBCONTROL",
-      "Customer": "GR & MM BLACKLEDGE PLC", 
-      "SHIPPED_DATE": "01-01-2024",
-      "Total_Orders": 2,
-      "Total_Pallets": 2,
-      "Distance": 134.5,
-      "Cost": 102.8,
-      "SHORT_POSTCODE": "PR"}}
-
-<data>
-{{df.head().to_string()}}
-</data>
-
-Some key things to note about the data:
-- The "PROD_TYPE" column includes 2 values, either "AMBIENT" or "AMBCONTROL"
-- The "SHIPPED_DATE" column ranges from Jan 2024 to Aug 2024 and is in dd-mm-yyyy format
-- The "Cost" is in Pounds(£)
+{data_description}
 
 Here is the question I would like you to answer using this data:
 <question>
@@ -310,45 +349,43 @@ include any key variables that you calculated in the code inside {{}}.
     }
 
     try:
-        with st.spinner("Analyzing data..."):
-            response = requests.post("https://api.openai.com/v1/chat/completions", 
-                                  headers=headers, 
-                                  json=payload)
-            
-            if response.status_code != 200:
-                st.error(f"Error: Received status code {response.status_code}")
-                st.error(f"Response content: {response.text}")
-                return None
-            
-            response_json = response.json()
-            response_content = response_json['choices'][0]['message']['content']
-            
-            # Execute the code segments and get results
-            results = execute_analysis(df, response_content)
-            
-            # Store in chat history
-            st.session_state.chat_history.append({
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "query": question,
-                "approach": results['approach'],
-                "answer": results['answer'],
-                "figure": results['figure'],
-                "raw_response": response_content
-            })
-            
-            return results
-            
+        response = requests.post("https://api.openai.com/v1/chat/completions", 
+                              headers=headers, 
+                              json=payload)
+        
+        if response.status_code != 200:
+            st.error(f"Error: Received status code {response.status_code}")
+            st.error(f"Response content: {response.text}")
+            return None
+        
+        response_json = response.json()
+        response_content = response_json['choices'][0]['message']['content']
+        
+        # Execute the code segments and get results
+        results = execute_analysis(df, response_content)
+        
+        return results
+        
     except Exception as e:
         st.error(f"Error during analysis: {e}")
         return None
 
-def load_default_data():
-    """Load the default CSV file."""
+    
+def load_data_file(filename):
+    """Load a CSV data file with automatic parsing of date columns."""
     try:
-        return pd.read_csv('Data.csv', parse_dates=['SHIPPED_DATE'], dayfirst=True)
+        # Load data without parsing dates first
+        data = pd.read_csv(filename)
+        
+        # Identify columns with "date" in their name and parse them as dates
+        date_columns = [col for col in data.columns if 'date' in col.lower()]
+        
+        # Reload data with date parsing for identified columns
+        return pd.read_csv(filename, parse_dates=date_columns, dayfirst=True)
+        
     except Exception as e:
-        st.error(f"Error loading default data: {str(e)}")
-        return None
+        st.error(f"Error loading {filename}: {str(e)}")
+        return None    
 
 def display_analysis_results(results):
     """Display the analysis results in a structured format."""
@@ -361,10 +398,97 @@ def display_analysis_results(results):
         st.write(results['answer'])
     
     if results['figure']:
+        st.subheader("Visualization")
         st.pyplot(results['figure'])
+    
+    # Display code segments in expandable sections
+    if results['code'] or results['chart_code']:
+        st.subheader("Code Segments")
+        
+        if results['code']:
+            with st.expander("Show Analysis Code"):
+                st.code(results['code'], language='python')
+        
+        if results['chart_code']:
+            with st.expander("Show Visualization Code"):
+                st.code(results['chart_code'], language='python')
+                
+                
+def get_sample_queries(data_source):
+    """Return appropriate sample queries based on the selected data source."""
+    queries = {
+        'Outbound_Data.csv': [
+            "Plot the bar chart for short postcode 'LU' in which x axis is number of pallets and y axis is total orders. Stack them on the basis of prod type.",
+            "Which postcode results in the highest total cost?",
+            "What is the monthly trend in total cost?",
+            "What is the average cost per pallet for each PROD TYPE and how does it vary across the following SHORT_POSTCODE regions: CV, NG, NN, RG?",
+            "Identify the distribution of cost per pallet, is it normally distributed?",
+            "Generate a radar chart of average pallets per order for the top 15 postcodes with maximum average cost per order.",
+            "Generate the boxplot distribution for pallets of the top 8 customers by total orders.",
+            "For ambient product type, which are the top 5 customers with total orders > 10 and highest standard deviation in cost per pallet?",
+            "What is the trend in cost over time and plot forecasted cost using 3-month exponential smoothing?",
+            "Perform a hypothesis test to analyze if average cost per order differs significantly with product type.",
+            "Create a regression line for cost per order and distance along with R squared.",
+            "What is the distribution of cost in percentiles?",
+            "How does the cost per order vary with distance within each PROD TYPE?",
+            "Find the top 5 customers by total pallets shipped and compare their average cost per pallet and distance traveled.",
+            "Identify the SHORT_POSTCODE areas with the highest total shipping costs and also mention their cost per pallet.",
+            "Which customer has the highest total shipping cost over time, and how does its cost trend vary by month?",
+            "What is the order frequency per week for the last 2 months?",
+            "What is the total cost for ambient product type in January 2024?",
+            "How has the cost per pallet evolved over the last 3 months?",
+            "What is the average cost per pallet for each product type?"
+        ],
+        'Inventory_Batch.csv': [
+            "What is the total inventory value by product category?",
+            "Which products have inventory levels below their safety stock?",
+            "What is the monthly trend in inventory turnover rate?",
+            "Show the age distribution of current inventory batches",
+            "Which are the top 10 products by storage cost?",
+            "What is the average shelf life remaining for each product category?",
+            "Identify products with excess inventory (more than 120% of max stock level)",
+            "What is the weekly trend in inventory receipts vs. withdrawals?",
+            "Generate a heat map of inventory levels across different storage locations",
+            "Which products have the highest holding costs in the last quarter?",
+            "Show the distribution of batch sizes by product category",
+            "What is the correlation between product value and storage duration?",
+            "Identify seasonal patterns in inventory levels for the top 5 products",
+            "Calculate and visualize the inventory accuracy rates by location",
+            "What is the average time between receipt and first withdrawal for each product?",
+            "Show the distribution of inventory value across different temperature zones",
+            "Which products have the highest stock rotation frequency?",
+            "Generate a Pareto chart of inventory value by product category",
+            "What is the trend in average days of inventory on hand?"
+        ],
+        'Inbound_Data.csv': [
+            "What is the utilization in each tradelane/tradeline/route over a specific time period?",
+            "What is the total cost in each tradelane/tradeline/route over a specific time period?",
+            "What is the monthly trend of above metrics?",
+            "What is the cost breakdown by Company?",
+            "What is the proportion of FTL/LTL by route?",
+            "What is the Pallet per Order?",
+            "What is the cost per pallet?",
+            "What is the cost per order?",
+            "What is the average lead time by tradelane/tradeline/route?",
+            "Which routes/delivery supplier/delivery groups charge higher fuel costs?",
+            "Which routes/delivery supplier/delivery groups have higher % of late delivery?",
+            "Which routes/delivery supplier/delivery groups have higher % of late collection?",
+            "What is the average delay in delivery on a particular route by delivery supplier?",
+            "What is the average delay in collection on a particular route by delivery supplier?"
+        ]      
+    }
+    return queries.get(data_source, [])
+                
 
 def main():
     st.title("GenAI Answer Bot")
+    
+    # Define available data files
+    data_files = {
+        'Outbound_Data.csv': 'Data/Outbound_Data.csv',
+        'Inventory_Batch.csv': 'Data/Inventory_Batch.csv',
+        'Inbound_Data.csv': 'Data/Inbound_Data.csv'
+    }
     
     # Sidebar configuration
     with st.sidebar:
@@ -378,8 +502,9 @@ def main():
         st.subheader("2. Data Source")
         data_source = st.radio(
             "Choose Data Source:",
-            ["Use Default Data", "Upload Custom File"],
-            disabled=True,
+            # list(data_files.keys()) + ["Upload Custom File"],
+            list(data_files.keys()),
+            disabled=False,
             index=0
         )
         
@@ -389,16 +514,23 @@ def main():
             reset_app_state()
         
         df = None
-        if data_source == "Use Default Data":
-            df = load_default_data()
+        if data_source in data_files:
+            df = load_data_file(data_files[data_source])
             if df is not None:
-                st.success("Default data loaded successfully!")
+                st.success(f"{data_source} loaded successfully!")
                 st.session_state.df = df
         else:
             uploaded_file = st.file_uploader("Upload CSV file", type=['csv'])
             if uploaded_file:
                 try:
-                    df = pd.read_csv(uploaded_file, parse_dates=['SHIPPED_DATE'], dayfirst=True)
+                    temp_df = pd.read_csv(uploaded_file)
+
+                    # Identify columns with "date" in their name and parse those as dates
+                    date_columns = [col for col in temp_df.columns if 'date' in col.lower()]
+                    
+                    # Reload the data with date parsing for identified columns
+                    df = pd.read_csv(uploaded_file, parse_dates=date_columns, dayfirst=True)
+
                     st.success("Custom file loaded successfully!")
                     st.session_state.df = df
                 except Exception as e:
@@ -410,8 +542,8 @@ def main():
         return
     
     if 'df' not in st.session_state:
-        if data_source == "Use Default Data":
-            st.error("Default data file not found. Please check if 'Data.csv' exists.")
+        if data_source in data_files:
+            st.error(f"Data file not found. Please check if '{data_source}' exists.")
         else:
             st.info("Please upload your CSV file in the sidebar.")
         return
@@ -419,37 +551,21 @@ def main():
     # Display sample data
     with st.expander("📊 View Sample Data"):
         display_df = st.session_state.df.copy()
-        display_df['SHIPPED_DATE'] = display_df['SHIPPED_DATE'].dt.strftime('%Y-%m-%d')
-        display_df = display_df.set_index('PROD_TYPE')
+        
+        # Identify and format all datetime columns
+        date_columns = display_df.select_dtypes(include=['datetime64']).columns
+        for date_col in date_columns:
+            display_df[date_col] = display_df[date_col].dt.strftime('%d-%m-%Y')
+        
+        display_df = display_df.set_index(display_df.columns[0])    
         st.dataframe(display_df.head(), use_container_width=True)
+    
     
     # Query interface
     st.subheader("💬 Ask Questions About Your Data")
     
-    # Sample queries
-    sample_queries = [
-        "Which postcode results in the highest total cost?",
-        "What is the monthly trend in total cost?",
-        "What is the average cost per pallet for each PROD TYPE and how does it vary across the following SHORT_POSTCODE regions: CV, NG, NN, RG?",
-        "Identify the distribution of cost per pallet, is it normally distributed?",
-        "Generate a radar chart of average pallets per order for the top 15 postcodes with maximum average cost per order.",
-        "Generate the boxplot distribution for pallets of the top 8 customers by total orders.",
-        "For ambient product type, which are the top 5 customers with total orders > 10 and highest standard deviation in cost per pallet?",
-        "What is the trend in cost over time and plot forecasted cost using 3-month exponential smoothing?",
-        "Perform a hypothesis test to analyze if average cost per order differs significantly with product type.",
-        "Create a regression line for cost per order and distance along with R squared.",
-        "What is the distribution of cost in percentiles?",
-        "How does the cost per order vary with distance within each PROD TYPE?",
-        "Find the top 5 customers by total pallets shipped and compare their average cost per pallet and distance traveled.",
-        "Identify the SHORT_POSTCODE areas with the highest total shipping costs and also mention their cost per pallet.",
-        "Which customer has the highest total shipping cost over time, and how does its cost trend vary by month?",
-        "What is the order frequency per week for the last 2 months?",
-        "What is the total cost for ambient product type in January 2024?",
-        "How has the cost per pallet evolved over the last 3 months?",
-        "What is the average cost per pallet for each product type?"
-    ]
-
-
+    # Get sample queries based on selected data source
+    sample_queries = get_sample_queries(st.session_state.current_data_source)
     
     selected_query = st.selectbox(
         "Select a sample query or write your own below:",
@@ -469,19 +585,45 @@ def main():
         submit_button = st.button("🔍 Analyze")
     
     if submit_button and query:
-        start_time = time.time()
-        
-        results = analyze_data_with_execution(st.session_state.df, query, api_key)
-        
-        if results:
-            display_analysis_results(results)
+        # Move time tracking and spinner to encompass both analysis and display
+        with st.spinner("Analyzing data and generating visualizations..."):
+            start_time = time.time()
             
-            end_time = time.time()
-            time_taken = end_time - start_time
-            st.info(f"Analysis completed in {time_taken:.1f} seconds")
+            # Perform analysis
+            results = analyze_data_with_execution(
+                st.session_state.df, 
+                query, 
+                api_key, 
+                st.session_state.current_data_source
+            )
+            
+            if results:
+                # Display results inside the spinner context
+                display_analysis_results(results)
+                
+                # Store in chat history
+                chat_entry = {
+                    "data_source": st.session_state.current_data_source,
+                    "query": query,
+                    "approach": results['approach'],
+                    "answer": results['answer'],
+                    "figure": results['figure'],
+                    "code": results['code'],
+                    "chart_code": results['chart_code'],
+                }
+                
+                # Check if this exact query isn't already the last entry
+                if not st.session_state.chat_history or st.session_state.chat_history[-1]["query"] != query:
+                    st.session_state.chat_history.append(chat_entry)
+                
+                end_time = time.time()
+                time_taken = end_time - start_time
+                
+        # Show completion message after spinner
+        st.info(f"Analysis completed in {time_taken:.1f} seconds")
     
     
-    # Display analysis history with download button
+    # Display analysis history with download and delete options
     if st.session_state.chat_history:
         col1, col2 = st.columns([6, 2])
         with col1:
@@ -489,25 +631,41 @@ def main():
         with col2:
             download_word_doc()
             
+        # Iterate through history in reverse order with index tracking
         for idx, chat in enumerate(reversed(st.session_state.chat_history)):
-            with st.expander(
-                f"Query {len(st.session_state.chat_history) - idx}: {chat['query'][:50]}...",
-                expanded=False
-            ):
-                st.markdown(f"**🕒 Time:** {chat['timestamp']}")
-                st.markdown("**🔍 Query:**")
-                st.write(chat['query'])
-                
-                if chat['approach']:
-                    st.markdown("**🎯 Approach:**")
-                    st.write(chat['approach'])
-                
-                if chat['answer']:
-                    st.markdown("**💡 Results:**")
-                    st.write(chat['answer'])
-                
-                if chat['figure']:
-                    st.pyplot(chat['figure'])
+            # Calculate the actual index in the original list
+            original_idx = len(st.session_state.chat_history) - idx - 1
+            
+            # Create two columns for each analysis entry
+            hist_col1, hist_col2 = st.columns([20, 1])
+            
+            with hist_col1:
+                with st.expander(
+                    f"Query {len(st.session_state.chat_history) - idx}: {chat['query'][:50]}...",
+                    expanded=False
+                ):
+                    st.markdown("**🔍 Query:**")
+                    st.write(chat['query'])
+                    
+                    st.markdown(f"**📊 Data Source:** {chat.get('data_source', 'Not specified')}")
+                    
+                    if chat['approach']:
+                        st.markdown("**🎯 Approach:**")
+                        st.write(chat['approach'])
+                    
+                    if chat['answer']:
+                        st.markdown("**💡 Results:**")
+                        st.write(chat['answer'])
+                    
+                    if chat['figure']:
+                        st.pyplot(chat['figure'])
+            
+            with hist_col2:
+                # Add delete button for each entry
+                if st.button("🗑️", key=f"delete_{original_idx}"):
+                    st.session_state.chat_history.pop(original_idx)
+                    st.rerun()  # Rerun the app to refresh the display
+                    
 
 if __name__ == "__main__":
     main()
