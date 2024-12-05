@@ -11,7 +11,12 @@ from PIL import Image
 from docx import Document
 from docx.shared import Inches
 import base64
-# pip install python-docx
+# New imports for audio recording and processing
+import sounddevice as sd
+import soundfile as sf
+import numpy as np
+import tempfile
+from openai import OpenAI
 
 # Streamlit app configuration
 st.set_page_config(
@@ -36,6 +41,38 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
+    
+    
+# Initialize session state for audio recording and transcribed text
+if 'recording' not in st.session_state:
+    st.session_state.recording = False
+if 'audio_data' not in st.session_state:
+    st.session_state.audio_data = None
+if 'transcribed_text' not in st.session_state:
+    st.session_state.transcribed_text = ""
+
+# Function to record audio
+def record_audio(duration=8, sample_rate=16000):
+    """Record audio for a specified duration."""
+    audio_data = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=1)
+    sd.wait()
+    return audio_data
+
+# Function to transcribe audio using Whisper
+def transcribe_audio(audio_file_path, api_key):
+    """Transcribe audio file using OpenAI Whisper API."""
+    try:
+        client = OpenAI(api_key=api_key)
+        with open(audio_file_path, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file
+            )
+        return transcript.text
+    except Exception as e:
+        st.error(f"Error in transcription: {str(e)}")
+        return None
+
 
 # Initialize session state
 if 'chat_history' not in st.session_state:
@@ -475,7 +512,7 @@ def get_sample_queries(data_source):
             "Which routes/delivery supplier/delivery groups have higher % of late collection?",
             "What is the average delay in delivery on a particular route by delivery supplier?",
             "What is the average delay in collection on a particular route by delivery supplier?"
-        ]        
+        ]      
     }
     return queries.get(data_source, [])
                 
@@ -573,12 +610,70 @@ def main():
         key="query_select"
     )
     
-    query = st.text_area(
-        "Enter your query:",
-        value=selected_query,
-        height=100,
-        key="query_input"
-    )
+    # Create columns for text input and microphone button
+    col1, col2 = st.columns([18, 1])
+    
+    # Use the transcribed text from session state if available, otherwise use selected query
+    initial_value = st.session_state.transcribed_text if st.session_state.transcribed_text else selected_query
+    
+    with col1:
+        query = st.text_area(
+            "Enter your query:",
+            value=initial_value,
+            height=100,
+            key="query_input"
+        )
+    
+    with col2:
+        st.write("")
+        st.write("")
+        # Add microphone button with progress bar
+        if st.button("🎙️", help="Start Recording"):
+            try:
+                # Create a progress bar
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                # Record audio while updating progress
+                audio_data = None
+                sample_rate = 16000
+                duration = 8
+                
+                # Start recording
+                audio_data = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=1)
+                
+                # Update progress bar while recording
+                for i in range(duration):
+                    # Update progress
+                    progress = (i + 1) / duration
+                    progress_bar.progress(progress)
+                    time.sleep(1)
+                
+                sd.wait()  # Wait for recording to complete
+                
+                # Clear progress bar and status
+                progress_bar.empty()
+                status_text.empty()
+                
+                st.session_state.audio_data = audio_data
+                
+                # Save audio to temporary file
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio:
+                    sf.write(temp_audio.name, audio_data, 16000)
+                    
+                    # Transcribe audio
+                    transcribed_text = transcribe_audio(temp_audio.name, api_key)
+                    
+                    if transcribed_text:
+                        # Store transcribed text in session state
+                        st.session_state.transcribed_text = transcribed_text
+                        st.rerun()
+                    else:
+                        st.error("Failed to transcribe audio. Please try again.")
+                        
+            except Exception as e:
+                st.error(f"Error recording audio: {str(e)}")
+                
     
     col1, col2 = st.columns([1, 5])
     with col1:
