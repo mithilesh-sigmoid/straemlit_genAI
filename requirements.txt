@@ -7,7 +7,3 @@ requests
 Pillow
 python-docx
 scikit-learn
-numpy
-openai
-sounddevice
-soundfile
