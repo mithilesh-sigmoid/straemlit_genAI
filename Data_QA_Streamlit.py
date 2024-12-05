@@ -613,7 +613,7 @@ def main():
     
     # Create columns for text input and microphone button
     col1, col2 = st.columns([18, 1])
-    
+
     # Use the transcribed text from session state if available, otherwise use selected query
     initial_value = st.session_state.transcribed_text if st.session_state.transcribed_text else selected_query
     
@@ -624,6 +624,9 @@ def main():
             height=100,
             key="query_input"
         )
+    
+    # Create a placeholder for error messages before the microphone button
+    error_placeholder = st.empty()
     
     with col2:
         st.write("")
@@ -670,10 +673,12 @@ def main():
                         st.session_state.transcribed_text = transcribed_text
                         st.rerun()
                     else:
-                        st.error("Failed to transcribe audio. Please try again.")
+                        # Use the placeholder to display the error
+                        error_placeholder.error("Failed to transcribe audio. Please try again.")
                         
             except Exception as e:
-                st.error(f"Error recording audio: {str(e)}")
+                # Use the placeholder to display the error
+                error_placeholder.error(f"Error recording audio: {str(e)}")
                 
     
     col1, col2 = st.columns([1, 5])
