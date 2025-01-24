@@ -51,6 +51,9 @@ if 'audio_data' not in st.session_state:
 if 'transcribed_text' not in st.session_state:
     st.session_state.transcribed_text = ""
 
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+
 # Function to record audio
 def record_audio(duration=8, sample_rate=16000):
     """Record audio for a specified duration."""
@@ -112,6 +115,7 @@ def create_word_document(chat_history):
         doc.add_paragraph(f'Data Source: {chat.get("data_source", "Not specified")}')
         
         # Rest of the function remains the same
+
         if chat['approach']:
             doc.add_heading('Approach:', level=2)
             doc.add_paragraph(chat['approach'])
@@ -266,6 +270,81 @@ def get_prompt_file(data_source):
     }
     return prompt_mapping.get(data_source)
 
+def finding_intent(query,api_key):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+    payload = {
+        "model": "gpt-4o",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"""
+You are an AI assistant that identifies the intent behind a user's query. The intent can be either data analysis or cost optimization. Use the following guidelines to classify the intent:
+Data Analysis:
+Queries focus on analyzing datasets, identifying trends, distributions, patterns, or relationships.
+Examples:
+"What is the monthly trend in total cost?"
+"Identify the distribution of cost per pallet, is it normally distributed?"
+"What is the average shelf life remaining for each product category?"
+"Generate a heat map of inventory levels across different storage locations."
+Cost Optimization:
+Queries focus on strategies, scenarios, or calculations to minimize costs or improve efficiency.
+Examples:
+"What are the cost savings for user X if we consolidate shipments?"
+"How can I optimize shipment costs for user X?"
+"What is the best consolidation window for user X to minimize costs?"
+"What happens if we increase truck capacity by 10%?"
+Here is the user's query:
+<query> {query} </query>
+Task:
+Classify the query intent as either data analysis or cost optimization and provide a brief reason for your classification and include this inside the <intent> tags.
+Format:
+<intent> [Data Analysis / Cost Optimization] </intent>
+Example Outputs:
+Query:
+"What is the monthly trend in total cost?"
+<intent>Data Analysis</intent>
+Query:
+"What are the cost savings for user X if we consolidate shipments?"
+<intent>Cost Optimization</intent>
+
+                    """
+                    }
+                ]
+            }
+        ],
+        "max_tokens": 4096,
+        "temperature": 0
+    }
+    try:
+        response = requests.post("https://api.openai.com/v1/chat/completions", 
+                              headers=headers, 
+                              json=payload)
+        
+        if response.status_code != 200:
+            st.error(f"Error: Received status code {response.status_code}")
+            st.error(f"Response content: {response.text}")
+            return None
+        
+        response_json = response.json()
+        response_content = response_json['choices'][0]['message']['content']
+        
+
+        # Extract intent section
+        intent_match = re.search(r'<intent>(.*?)</intent>', response_content, re.DOTALL)
+        if intent_match:
+            intent = intent_match.group(1).strip()
+        
+        return intent
+        
+    except Exception as e:
+        st.error(f"Error during analysis: {e}")
+        return None
 
 def analyze_data_with_execution(df, question, api_key, data_source):
     # Get the appropriate prompt file based on data source
@@ -286,7 +365,9 @@ def analyze_data_with_execution(df, question, api_key, data_source):
         st.error(f"Error reading {prompt_file}: {str(e)}")
         return None
 
-    
+    # Append the user's question to session messages
+    st.session_state.messages.append({"role": "user", "content": question})
+
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}"
@@ -295,13 +376,13 @@ def analyze_data_with_execution(df, question, api_key, data_source):
     payload = {
         "model": "gpt-4o",
         "messages": [
+            *st.session_state.messages,
             {
                 "role": "user",
                 "content": [
                     {
                         "type": "text",
                         "text": f"""
-                        
 You are an AI assistant tasked with analyzing a dataset to provide code for calculating the final answer and generating relevant visualization.
 I will provide you with the data in dataframe format, as well as a question to answer based on the data.
 
@@ -377,6 +458,7 @@ Return only the Python code without any explanation or markdown formatting.
 
 Finally, provide the answer to the question in natural language inside <answer> tags. Be sure to
 include any key variables that you calculated in the code inside {{}}.
+
                     """
                     }
                 ]
@@ -399,6 +481,8 @@ include any key variables that you calculated in the code inside {{}}.
         response_json = response.json()
         response_content = response_json['choices'][0]['message']['content']
         
+        # Save the assistant's response to the session state
+        st.session_state.messages.append({"role": "assistant", "content": response_content})
         # Execute the code segments and get results
         results = execute_analysis(df, response_content)
         
@@ -427,6 +511,7 @@ def load_data_file(filename):
 
 def display_analysis_results(results):
     """Display the analysis results in a structured format."""
+
     if results['approach']:
         st.subheader("Approach")
         st.write(results['approach'])
@@ -686,17 +771,30 @@ def main():
         submit_button = st.button("🔍 Analyze")
     
     if submit_button and query:
+
         # Move time tracking and spinner to encompass both analysis and display
         with st.spinner("Analyzing data and generating visualizations..."):
             start_time = time.time()
-            
+            #hit intent analysis function and generate response
+            intent = finding_intent(query=query, api_key=api_key)
+            if intent == 'Data Analysis':
             # Perform analysis
-            results = analyze_data_with_execution(
-                st.session_state.df, 
-                query, 
-                api_key, 
-                st.session_state.current_data_source
-            )
+                st.write("It is Data Analysis prompt\n")
+                results = analyze_data_with_execution(
+                    st.session_state.df, 
+                    query, 
+                    api_key, 
+                    st.session_state.current_data_source
+                )
+            elif intent == 'Cost Optimization':
+                st.write("It is cost optimization prompt\n")
+                results = {
+                    'approach': None,
+                    'answer': None,
+                    'figure': None,
+                    'code': None,
+                    'chart_code': None
+                }
             
             if results:
                 # Display results inside the spinner context
@@ -749,7 +847,7 @@ def main():
                     st.write(chat['query'])
                     
                     st.markdown(f"**📊 Data Source:** {chat.get('data_source', 'Not specified')}")
-                    
+
                     if chat['approach']:
                         st.markdown("**🎯 Approach:**")
                         st.write(chat['approach'])
