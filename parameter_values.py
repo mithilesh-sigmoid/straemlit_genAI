@@ -1,4 +1,4 @@
-limport openai
+import openai
 
 def get_chatgpt_response(api_key, instructions, user_query):
     # Set the API key
