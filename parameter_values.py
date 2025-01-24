@@ -1,44 +1,28 @@
-import pandas as pd
-import warnings
-warnings.filterwarnings("ignore")
-import os
-from langchain.vectorstores import FAISS
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.document_loaders import TextLoader
+import openai
 
+def get_chatgpt_response(api_key, instructions, user_query):
+    # Set the API key
+    openai.api_key = api_key
 
+    try:
+        # Send the query to ChatGPT with instructions as system context
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": instructions},
+                {"role": "user", "content": user_query}
+            ]
+        )
+        # Extract and return the assistant's response
+        return response['choices'][0]['message']['content']
+
+    except Exception as e:
+        return f"An error occurred: {e}"
+
+# Example usage
 def get_parameters(api_key, query):
-    os.environ["OPENAI_API_KEY"] = api_key
-    # Load data from a text file
-    loader = TextLoader("knowledge_base.txt")  # Replace with your knowledge base
-    documents = loader.load()
-
-    # Split data into manageable chunks
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    docs = text_splitter.split_documents(documents)
-
-    # Create a vector store with embeddings
-    embeddings = OpenAIEmbeddings()
-    vector_store = FAISS.from_documents(docs, embeddings)
-
-    # Initialize a retriever for querying the vector store
-    retriever = vector_store.as_retriever(search_type="similarity", search_k=3)
-
-    from langchain.tools import Tool
-    import json
-
-    def get_consolidation(info_str):
-        
-        info_dict= eval(info_str)
-        
-        return info_dict
-
-    # Define the tool
-    cost_consolidation_tool = Tool(
-        name="Cost consolidation",
-        func=get_consolidation,
-        description="""You are an AI assistant tasked with analyzing questions and based on that give value of certain variables:
+    api_key = api_key 
+    instructions = """You are an AI assistant tasked with analyzing questions and based on that give value of certain variables:
     list of variables are below:
     start_date:
     end_date:
@@ -109,48 +93,7 @@ def get_parameters(api_key, query):
 
     rerturn these variables in dictionary format keeping all these variables as keys.
     """
-    )
+    user_query = query
 
-    from langchain.chains import RetrievalQA
-    from langchain.chat_models import ChatOpenAI
-
-    # Initialize the LLM
-    llm = ChatOpenAI(model="gpt-4")
-
-    # Create the Retrieval QA chain
-    retrieval_qa_chain = RetrievalQA.from_chain_type(
-        llm=llm,
-        retriever=retriever,
-        return_source_documents=True
-    )
-
-
-    from langchain.agents import initialize_agent, Tool, AgentType
-
-    # Combine tools and retrieval chain
-    tools = [
-        Tool(
-            name="Document Retrieval",
-            func=lambda q: retrieval_qa_chain({"query": q})["result"],
-            description="Retrieve knowledge from the database."
-        ),
-        cost_consolidation_tool
-    ]
-
-    # Initialize the agent
-    agent = initialize_agent(
-        tools=tools,
-        llm=llm,
-        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-        verbose=True
-    )
-
-    def chatbot_agentic_rag():
-        print("Agentic RAG Chatbot is running! Type 'exit' to quit.")
-        user_query = query
-        if user_query.lower() == "exit":
-            print("Chatbot session ended.")
-        response = agent.run(user_query)
-        print(f"Bot: {response}")
-
-    return chatbot_agentic_rag()
+    response = get_chatgpt_response(api_key, instructions, user_query)
+    return response
