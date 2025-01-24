@@ -11,3 +11,7 @@ numpy
 openai
 sounddevice
 soundfile
+bokeh
+plotly
+pyecharts
+openpyxl
