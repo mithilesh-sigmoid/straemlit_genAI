@@ -1,4 +1,4 @@
-import openai
+limport openai
 
 def get_chatgpt_response(api_key, instructions, user_query):
     # Set the API key
@@ -96,4 +96,4 @@ def get_parameters(api_key, query):
     user_query = query
 
     response = get_chatgpt_response(api_key, instructions, user_query)
-    return response
+    return eval(response)
