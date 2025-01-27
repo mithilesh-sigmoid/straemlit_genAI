@@ -1,4 +1,3 @@
-
 import openai
 
 def get_chatgpt_response(api_key, instructions, user_query):
@@ -10,9 +9,9 @@ def get_chatgpt_response(api_key, instructions, user_query):
 
     try:
         # Send the query to OpenAI ChatCompletion API
-        response = openai.completions.create(
-            model="gpt-4",  # Specify the GPT-4 model
-            prompt=[
+        response = openai.chat.completions.create(
+            model="gpt-4o",  # Specify the GPT-4 model
+            messages=[
                 {"role": "system", "content": instructions},
                 {"role": "user", "content": user_query}
             ],
@@ -106,5 +105,5 @@ def get_parameters_values(api_key, query):
     rerturn these variables in dictionary format keeping all these variables as keys.
     """
     response = get_chatgpt_response(api_key, instructions, query)
-    
+
     return eval(response)
