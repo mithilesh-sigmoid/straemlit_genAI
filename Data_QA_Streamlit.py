@@ -792,10 +792,11 @@ def main():
             elif intent == 'Cost Optimization':
                 st.write("It is cost optimization prompt\n")
 
-                parameters= parameter_values.get_parameters(api_key, query)
+                parameters= parameter_values.get_parameters_values(api_key, query)
                 results= cost_cosnsolidation.run_cost_optimization_simulation(parameters)
-            
-            if results:
+                cost_cosnsolidation.cost_calculation(parameters, results['params'])
+    
+            if results and intent != 'Cost Optimization':
                 # Display results inside the spinner context
                 display_analysis_results(results)
                 
