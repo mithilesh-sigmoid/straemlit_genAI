@@ -1,27 +1,40 @@
+
 import openai
 
 def get_chatgpt_response(api_key, instructions, user_query):
+    """
+    Sends a query to OpenAI's ChatCompletion API with the given instructions and user query.
+    """
     # Set the API key
     openai.api_key = api_key
 
     try:
-        # Send the query to ChatGPT with instructions as system context
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
+        # Send the query to OpenAI ChatCompletion API
+        response = openai.completions.create(
+            model="gpt-4",  # Specify the GPT-4 model
+            prompt=[
                 {"role": "system", "content": instructions},
                 {"role": "user", "content": user_query}
-            ]
+            ],
+            max_tokens=500,  # Adjust token limit based on your needs
+            temperature=0.7  # Adjust for creativity (0.7 is a balanced value)
         )
         # Extract and return the assistant's response
-        return response['choices'][0]['message']['content']
+        return response["choices"][0]["message"]["content"].strip()
+
+    except openai.OpenAIError as e:
+        # Handle OpenAI-specific errors
+        return f"An error occurred with the OpenAI API: {str(e)}"
 
     except Exception as e:
-        return f"An error occurred: {e}"
+        # Handle other exceptions (e.g., network issues)
+        return f"An unexpected error occurred: {str(e)}"
 
-# Example usage
-def get_parameters(api_key, query):
-    api_key = api_key 
+
+def get_parameters_values(api_key, query):
+    """
+    Prepares instructions for the AI and queries it for parameter values based on the user's question.
+    """
     instructions = """You are an AI assistant tasked with analyzing questions and based on that give value of certain variables:
     list of variables are below:
     start_date:
@@ -72,7 +85,7 @@ def get_parameters(api_key, query):
 
     Identify the Time Frame (start_date and end_date):
     Look for explicit dates or ranges in the question.
-    If not provided, default to the dataset’s min and max shipment dates (df['SHIPPED_DATE'].min() and df['SHIPPED_DATE'].max()).
+    If not provided, default to the datasets min and max shipment dates (df['SHIPPED_DATE'].min() and df['SHIPPED_DATE'].max()).
     Determine the Grouping Method (group_method):
     If the question focuses on a specific user or group of users, set the group_method to 'Customer Level'.
     If it focuses on zip codes or regions, set the group_method to 'Post Code Level'.
@@ -90,10 +103,8 @@ def get_parameters(api_key, query):
     all_customers
     selected_postcodes
     selected_customers
-
     rerturn these variables in dictionary format keeping all these variables as keys.
     """
-    user_query = query
-
-    response = get_chatgpt_response(api_key, instructions, user_query)
+    response = get_chatgpt_response(api_key, instructions, query)
+    
     return eval(response)
