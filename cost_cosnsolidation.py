@@ -1265,14 +1265,11 @@ def cost_calculation(parameters, best_params):
             # Select top 20 groups for display
             top_20_groups = group_metrics_df.head(20)
             
-
             st.write("")            
             
             # Create the comparison chart
             st.markdown(f"<h2 style='font-size:24px;'>{group_method} Comparison</h2>", unsafe_allow_html=True)
 
-            
-            
             # Set fixed chart dimensions and bar properties
             chart_width = 1200  # Fixed chart width in pixels
             chart_height = 600  # Fixed chart height in pixels
@@ -1418,7 +1415,7 @@ def cost_calculation(parameters, best_params):
             # Display the chart in Streamlit
             st.plotly_chart(fig_order_count)
 
-            
+
 
             
 # ################################################
