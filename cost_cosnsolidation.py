@@ -870,6 +870,7 @@ def run_cost_optimization_simulation(parameters):
 # # Calculation tab
 def cost_calculation(parameters, best_params):
     
+    df, rate_card_ambient, rate_card_ambcontrol = load_data()
     start_date= parameters['start_date']
     end_date= parameters['end_date']
 
