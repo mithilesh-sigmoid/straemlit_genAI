@@ -1,4 +1,5 @@
 import openai
+import re
 
 def get_chatgpt_response(api_key, instructions, user_query):
     """
@@ -15,8 +16,8 @@ def get_chatgpt_response(api_key, instructions, user_query):
                 {"role": "system", "content": instructions},
                 {"role": "user", "content": user_query}
             ],
-            max_tokens=4096,  # Adjust token limit based on your needs
-            temperature=0  # Adjust for creativity (0.7 is a balanced value)
+            max_tokens=500,  # Adjust token limit based on your needs
+            temperature=0.7  # Adjust for creativity (0.7 is a balanced value)
         )
         # Extract and return the assistant's response
         return response.choices[0].message.content
@@ -28,6 +29,7 @@ def get_chatgpt_response(api_key, instructions, user_query):
     except Exception as e:
         # Handle other exceptions (e.g., network issues)
         return f"An unexpected error occurred: {str(e)}"
+
 
 def get_parameters_values(api_key, query):
     """
@@ -101,8 +103,23 @@ def get_parameters_values(api_key, query):
     all_customers
     selected_postcodes
     selected_customers
-    rerturn these variables in dictionary format keeping all these variables as keys.
+    return these variables in dictionary format keeping all these variables as keys.
     """
     response = get_chatgpt_response(api_key, instructions, query)
 
-    return eval(response)
+    code_block = re.search(r"```python\n(.*?)```", response, re.DOTALL)
+    if code_block: 
+        extracted_code = code_block.group(1).strip('') 
+        return eval(extracted_code)
+    
+    ### return default parameters:
+    default_param={
+    "start_date": "01/01/2024",
+    "end_date": "31/03/2024",
+    "group_method": "Post Code Level",
+    "all_post_code": False,
+    "all_customers": None,
+    "selected_postcodes": ["NG (313)"],
+    "selected_customers": [] }
+
+    return default_param
