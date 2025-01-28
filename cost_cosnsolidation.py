@@ -50,25 +50,27 @@ def get_filtered_data(parameters, df):
     print("only date filter", df.shape) ### checkk
 
     # Add checkbox and conditional dropdown for selecting post codes or customers
+  
     if group_method == 'Post Code Level':
         all_postcodes = parameters['all_post_code']
+    
         
         if not all_postcodes:
             selected_postcodes = parameters['selected_postcodes']
-
+            selected_postcodes= [z.strip('') for z in selected_postcodes ]
     else:  # Customer Level
         all_customers = parameters['all_customers']
         if not all_customers:
             selected_customers = parameters['selected_customers']
-
+            selected_customers= [c.strip('') for c in selected_customers]
     # Filter the dataframe based on the selection
     if group_method == 'Post Code Level' and not all_postcodes:
         if selected_postcodes:  # Only filter if some postcodes are selected
-            df = df[df['SHORT_POSTCODE'].isin(selected_postcodes)]
+            df = df[df['SHORT_POSTCODE'].strip('').isin(selected_postcodes)]
         
     elif group_method == 'Customer Level' and not all_customers:
         if selected_customers:  # Only filter if some customers are selected
-            df = df[df['NAME'].isin(selected_customers)]
+            df = df[df['NAME'].strip('').isin(selected_customers)]
 
     return df
         
