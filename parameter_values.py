@@ -15,11 +15,11 @@ def get_chatgpt_response(api_key, instructions, user_query):
                 {"role": "system", "content": instructions},
                 {"role": "user", "content": user_query}
             ],
-            max_tokens=500,  # Adjust token limit based on your needs
-            temperature=0.7  # Adjust for creativity (0.7 is a balanced value)
+            max_tokens=4096,  # Adjust token limit based on your needs
+            temperature=0  # Adjust for creativity (0.7 is a balanced value)
         )
         # Extract and return the assistant's response
-        return response["choices"][0]["message"]["content"].strip()
+        return response.choices[0].message.content
 
     except openai.OpenAIError as e:
         # Handle OpenAI-specific errors
@@ -28,7 +28,6 @@ def get_chatgpt_response(api_key, instructions, user_query):
     except Exception as e:
         # Handle other exceptions (e.g., network issues)
         return f"An unexpected error occurred: {str(e)}"
-
 
 def get_parameters_values(api_key, query):
     """
