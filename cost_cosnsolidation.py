@@ -33,7 +33,7 @@ def load_data():
 
 df, rate_card_ambient, rate_card_ambcontrol = load_data()
 
-def get_filtered_data(parameters):
+def get_filtered_data(parameters, df):
 
     global group_field
     global group_method
@@ -680,7 +680,8 @@ def run_cost_optimization_simulation(parameters):
     start_date= parameters['start_date']
     end_date= parameters['end_date']
     start_time = time.time()
-    df= get_filtered_data(parameters)
+    df, rate_card_ambient, rate_card_ambcontrol = load_data()
+    df= get_filtered_data(parameters, df)
     # Prepare data for simulation
     df['GROUP'] = df[group_field]
     grouped = df.groupby(['PROD TYPE', 'GROUP'])
