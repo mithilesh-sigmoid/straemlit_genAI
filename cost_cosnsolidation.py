@@ -66,14 +66,15 @@ def get_filtered_data(parameters, df):
     # Filter the dataframe based on the selection
     if group_method == 'Post Code Level' and not all_postcodes:
         if selected_postcodes:  # Only filter if some postcodes are selected
-            df = df[df['SHORT_POSTCODE'].str.strip('').isin(selected_postcodes)]
+            df = df[df['SHORT_POSTCODE'].strip('').isin(selected_postcodes)]
         
     elif group_method == 'Customer Level' and not all_customers:
         if selected_customers:  # Only filter if some customers are selected
-            df = df[df['NAME'].str.strip('').isin(selected_customers)]
+            df = df[df['NAME'].strip('').isin(selected_customers)]
 
     return df
         
+
 # Create tabs
 # tab1, tab2 = st.tabs(["Simulation", "Calculation"])
 
@@ -877,6 +878,7 @@ def run_cost_optimization_simulation(parameters):
 def cost_calculation(parameters, best_params):
     
     df, rate_card_ambient, rate_card_ambcontrol = load_data()
+    df= get_filtered_data(parameters, df)
     start_date= parameters['start_date']
     end_date= parameters['end_date']
 
