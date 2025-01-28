@@ -685,6 +685,7 @@ def run_cost_optimization_simulation(parameters):
     start_time = time.time()
     df, rate_card_ambient, rate_card_ambcontrol = load_data()
     df= get_filtered_data(parameters, df)
+    print(df.shape)  ## checkk
     # Prepare data for simulation
     df['GROUP'] = df[group_field]
     grouped = df.groupby(['PROD TYPE', 'GROUP'])
