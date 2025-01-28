@@ -108,18 +108,20 @@ def get_parameters_values(api_key, query):
     response = get_chatgpt_response(api_key, instructions, query)
 
     code_block = re.search(r"```python\n(.*?)```", response, re.DOTALL)
-    if code_block: 
-        extracted_code = code_block.group(1).strip('') 
-        return eval(extracted_code)
+    try:
+        if code_block: 
+            extracted_code = code_block.group(1).strip('') 
+            return eval(extracted_code)
     
     ### return default parameters:
-    default_param={
-    "start_date": "01/01/2024",
-    "end_date": "31/03/2024",
-    "group_method": "Post Code Level",
-    "all_post_code": False,
-    "all_customers": None,
-    "selected_postcodes": ["NG (313)"],
-    "selected_customers": [] }
+    except: 
+        default_param={
+        "start_date": "01/01/2024",
+        "end_date": "31/03/2024",
+        "group_method": "Post Code Level",
+        "all_post_code": False,
+        "all_customers": None,
+        "selected_postcodes": ["NG (313)"],
+        "selected_customers": [] }
 
-    return default_param
+        return default_param
