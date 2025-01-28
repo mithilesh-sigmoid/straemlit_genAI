@@ -265,6 +265,7 @@ def calculate_metrics(all_consolidated_shipments, df):
     return metrics
 
 def create_utilization_chart(all_consolidated_shipments):
+    print(all_consolidated_shipments)  #### checkkkk
     utilization_bins = {f"{i}-{i+5}%": 0 for i in range(0, 100, 5)}
     for shipment in all_consolidated_shipments:
         utilization = shipment['Utilization %']
@@ -677,6 +678,8 @@ div.stDownloadButton > button:hover {
     
 # Simulation tab
 def run_cost_optimization_simulation(parameters):
+
+    print(parameters)  ## checkkk
     start_date= parameters['start_date']
     end_date= parameters['end_date']
     start_time = time.time()
@@ -759,7 +762,7 @@ def run_cost_optimization_simulation(parameters):
         # Display best results
     st.markdown("<h2 style='font-size:26px;'>Best Simulation Results</h2>", unsafe_allow_html=True)
     st.write(f"Best Parameter: Shipment Window = {best_params[0]}")           
-        
+    
     # Save results and charts
     utilization_chart = create_utilization_chart(best_consolidated_shipments)
     # utilization_chart.write_image("utilization_chart.png")
