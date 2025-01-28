@@ -21,7 +21,7 @@ from bokeh.transform import linear_cmap
 
 global group_field
 global group_method
-shipment_window_range=(0, 10)
+shipment_window_range=(1, 10)
 total_shipment_capacity= 46
 
 def load_data():
