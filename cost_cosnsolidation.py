@@ -50,7 +50,7 @@ def get_filtered_data(parameters, df):
 
     # Add checkbox and conditional dropdown for selecting post codes or customers
     if group_method == 'Post Code Level':
-        all_postcodes = parameters['all_postcodes']
+        all_postcodes = parameters['all_post_code']
         
         if not all_postcodes:
             selected_postcodes = parameters['selected_postcodes']
