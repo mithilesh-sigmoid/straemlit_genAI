@@ -121,7 +121,7 @@ def get_parameters_values(api_key, query):
         "group_method": "Post Code Level",
         "all_post_code": False,
         "all_customers": None,
-        "selected_postcodes": ["NG (313)"],
+        "selected_postcodes": ["NG"],
         "selected_customers": [] }
 
         return default_param
