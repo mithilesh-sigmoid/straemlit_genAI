@@ -680,7 +680,7 @@ def run_cost_optimization_simulation(parameters):
     start_date= parameters['start_date']
     end_date= parameters['end_date']
     start_time = time.time()
-    df= get_filtered_data(parameters, df)
+    df= get_filtered_data(parameters)
     # Prepare data for simulation
     df['GROUP'] = df[group_field]
     grouped = df.groupby(['PROD TYPE', 'GROUP'])
