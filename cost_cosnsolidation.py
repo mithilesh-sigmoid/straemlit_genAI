@@ -47,6 +47,7 @@ def get_filtered_data(parameters, df):
 
     # Filter data based on selected date range
     df = df[(df['SHIPPED_DATE'] >= start_date) & (df['SHIPPED_DATE'] <= end_date)]
+    print("only date filter", df.shape) ### checkk
 
     # Add checkbox and conditional dropdown for selecting post codes or customers
     if group_method == 'Post Code Level':
