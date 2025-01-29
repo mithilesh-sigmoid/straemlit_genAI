@@ -815,8 +815,8 @@ def main():
                 if not st.session_state.chat_history or st.session_state.chat_history[-1]["query"] != query:
                     st.session_state.chat_history.append(chat_entry)
                 
-                end_time = time.time()
-                time_taken = end_time - start_time
+        end_time = time.time()
+        time_taken = end_time - start_time
                 
         # Show completion message after spinner
         st.info(f"Analysis completed in {time_taken:.1f} seconds")
