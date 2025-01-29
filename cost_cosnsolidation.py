@@ -685,7 +685,7 @@ def run_cost_optimization_simulation(parameters):
     print(parameters)  ## checkkk
     start_date= parameters['start_date']
     end_date= parameters['end_date']
-    start_time = time.time()
+    # start_time = time.time()
     df, rate_card_ambient, rate_card_ambcontrol = load_data()
     df= get_filtered_data(parameters, df)
     print(df.shape)  ## checkk
@@ -757,11 +757,11 @@ def run_cost_optimization_simulation(parameters):
             best_consolidated_shipments = all_consolidated_shipments
             best_params = (shipment_window, high_priority_limit, utilization_threshold)
     
-    end_time = time.time()
-    time_taken = end_time - start_time
-    time_taken_minutes = int(time_taken // 60)
-    time_taken_seconds = int(time_taken % 60)
-    st.write(f"Time taken: {time_taken_minutes} minutes {time_taken_seconds} seconds")
+    # end_time = time.time()
+    # time_taken = end_time - start_time
+    # time_taken_minutes = int(time_taken // 60)
+    # time_taken_seconds = int(time_taken % 60)
+    # st.write(f"Time taken: {time_taken_minutes} minutes {time_taken_seconds} seconds")
 
         # Display best results
     st.markdown("<h2 style='font-size:26px;'>Best Simulation Results</h2>", unsafe_allow_html=True)
@@ -890,7 +890,7 @@ def cost_calculation(parameters, best_params):
     calc_utilization_threshold = 95
     
     if True:
-        start_time = time.time()
+        # start_time = time.time()
         
         with st.spinner("Calculating..."):
             # Prepare data for calculation
@@ -915,11 +915,11 @@ def cost_calculation(parameters, best_params):
                 progress_percentage = int(((i + 1) / len(grouped)) * 100)
                 progress_bar(progress_percentage)
 
-            end_time = time.time()
-            time_taken = end_time - start_time
-            time_taken_minutes = int(time_taken // 60)
-            time_taken_seconds = int(time_taken % 60)
-            st.write(f"Time taken: {time_taken_minutes} minutes {time_taken_seconds} seconds")            
+            # end_time = time.time()
+            # time_taken = end_time - start_time
+            # time_taken_minutes = int(time_taken // 60)
+            # time_taken_seconds = int(time_taken % 60)
+            # st.write(f"Time taken: {time_taken_minutes} minutes {time_taken_seconds} seconds")            
                 
             # Calculate and display metrics
             metrics = calculate_metrics(all_consolidated_shipments, df)
