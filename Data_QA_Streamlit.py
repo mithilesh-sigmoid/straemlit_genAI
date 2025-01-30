@@ -796,7 +796,8 @@ def main():
                 st.write(parameters)  ## checkkk
                 
                 results= cost_cosnsolidation.run_cost_optimization_simulation(parameters)
-                cost_cosnsolidation.cost_calculation(parameters, results['params'])
+                if result is not None:
+                    cost_cosnsolidation.cost_calculation(parameters, results['params'])
     
             if results and intent != 'Cost Optimization':
                 # Display results inside the spinner context
