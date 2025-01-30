@@ -117,8 +117,8 @@ def get_parameters_values(api_key, query):
     
     expected output format:
 
-    start_date: 01/01/2023
-    end_date: 30/11/2024
+    start_date: 2023-01-01
+    end_date: 2024-11-30
     group_method: 'Customer Level'
     all_post_code: None
     all_customers: False
@@ -131,8 +131,8 @@ def get_parameters_values(api_key, query):
     expected output format:
 
    
-    start_date: 01/01/2024
-    end_date: 31/01/2024
+    start_date: 2024-01-01
+    end_date: 2024-01-31
     group_method: 'Post Code Level'
     all_post_code: False
     all_customers: None
@@ -140,12 +140,12 @@ def get_parameters_values(api_key, query):
     selected_customers:  []
    
 
-    Note : if someone mention last month or recent month,  keep it November 2024.
+    Note : if someone mention last month or recent month,  keep it November 2024, and date format should be: yyyy-mm-dd
 
     strict instructions: The final output should be only in this format (no extra text or steps should be included in the output):
 
-    { "start_date": "01/11/2024",
-    "end_date": "30/11/2024",
+    { "start_date": "2024-11-01",
+    "end_date": "2024-11-30",
     "group_method": "Post Code Level",
     "all_post_code": True,
     "all_customers": None,
