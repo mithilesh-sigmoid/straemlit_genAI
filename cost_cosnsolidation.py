@@ -74,8 +74,8 @@ def get_filtered_data(parameters, df):
         else :
             return pd.DataFrame()
     
-    if len(df)>0:
-        st.write("minimum date: ", df['SHIPPED_DATE'].min(), "maximum date: ", df['SHIPPED_DATE'].max())
+    # if len(df)>0:
+    #     st.write("minimum date: ", df['SHIPPED_DATE'].min(), "maximum date: ", df['SHIPPED_DATE'].max())
 
     return df
         
