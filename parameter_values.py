@@ -81,7 +81,7 @@ def ask_openai(selected_customers,selected_postcodes,customers,postcodes):
             {"role": "user", "content": prompt},
         ],
         max_tokens=4096,
-        temperature=0
+        temperature=0.7
     )
     return response.choices[0].message.content
 
