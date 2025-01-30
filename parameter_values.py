@@ -59,12 +59,18 @@ def ask_openai(selected_customers,selected_postcodes,customers,postcodes):
     postcodes = ['NG', 'LU', 'NN', 'NZ', 'AK']
 
     Expected Output format:
+    
+    matched_customers: ['ALLOGA UK','ALLOGA FRANCE', 'FORUM', 'USA']
+    matched_postcodes: ['NG', 'LU']
+    
+
+
+    Process the inputs {selected_customers}, {selected_postcodes}, {customers}, and {postcodes} and return the final answer that should contain only two lists with no explanation.
+
     <answer>
     matched_customers: ['ALLOGA UK','ALLOGA FRANCE', 'FORUM', 'USA']
     matched_postcodes: ['NG', 'LU']
     </answer>
-
-    Process the inputs {selected_customers}, {selected_postcodes}, {customers}, and {postcodes} and return the final answer that should contain only two lists with no explanation enclosed in <answer>,</answer> tags.
     """
         
     # Call OpenAI API
@@ -111,7 +117,6 @@ def get_parameters_values(api_key, query):
     
     expected output format:
 
-    <parameters>
     start_date: 01/01/2023
     end_date: 30/11/2024
     group_method: 'Customer Level'
@@ -119,13 +124,13 @@ def get_parameters_values(api_key, query):
     all_customers: False
     selected_postcodes: []
     selected_customers:  [ALLOGA UK]
-    </parameters>
+
 
     for the 2nd question "Can you optimize costs for shipments to zip code NG (313) between January and March 2024?",  response should be similar to this but in dictionary format:
     
     expected output format:
 
-    <parameters>
+   
     start_date: 01/01/2024
     end_date: 31/01/2024
     group_method: 'Post Code Level'
@@ -133,7 +138,7 @@ def get_parameters_values(api_key, query):
     all_customers: None
     selected_postcodes: [NG]
     selected_customers:  []
-    <parameters>
+   
 
     Note : if someone mention last month or recent month,  keep it November 2024.
 
@@ -149,6 +154,7 @@ def get_parameters_values(api_key, query):
 
     """
     response = get_chatgpt_response(api_key, instructions, query)
+    print(response)
     if response:
         try:
             extracted_code= eval(response)
@@ -158,6 +164,7 @@ def get_parameters_values(api_key, query):
             selected_customers= extracted_code['selected_customers']
             selected_postcodes= extracted_code['selected_postcodes']
             answer = ask_openai(selected_customers,selected_postcodes,customers,postcodes)
+            
             # Extract matched_customers
             customers_match = re.search(r"matched_customers:\s*(\[.*\])", answer)
             matched_customers = ast.literal_eval(customers_match.group(1)) if customers_match else []
@@ -166,6 +173,8 @@ def get_parameters_values(api_key, query):
             postcodes_match = re.search(r"matched_postcodes:\s*(\[.*\])", answer)
             matched_postcodes = ast.literal_eval(postcodes_match.group(1)) if postcodes_match else []
 
+            print(matched_customers)
+            print(matched_postcodes)
             extracted_code['selected_customers']= matched_customers
             extracted_code['selected_postcodes']= matched_postcodes
 
@@ -183,4 +192,3 @@ def get_parameters_values(api_key, query):
             "selected_customers": [] }
 
             return default_param
-    
