@@ -21,17 +21,16 @@ from bokeh.transform import linear_cmap
 
 global group_field
 global group_method
+
 shipment_window_range=(1, 10)
-total_shipment_capacity= 46
+total_shipment_capacity= 36
 
 def load_data():
-    df = pd.read_excel('Complete Input.xlsx', sheet_name='Sheet1')
-    df['SHIPPED_DATE'] = pd.to_datetime(df['SHIPPED_DATE'], dayfirst=True)
     rate_card_ambient = pd.read_excel('Complete Input.xlsx', sheet_name='AMBIENT')
     rate_card_ambcontrol = pd.read_excel('Complete Input.xlsx', sheet_name='AMBCONTROL')
-    return df, rate_card_ambient, rate_card_ambcontrol
+    return rate_card_ambient, rate_card_ambcontrol
 
-df, rate_card_ambient, rate_card_ambcontrol = load_data()
+rate_card_ambient, rate_card_ambcontrol = load_data()
 
 def get_filtered_data(parameters, df):
 
@@ -67,10 +66,14 @@ def get_filtered_data(parameters, df):
     if group_method == 'Post Code Level' and not all_postcodes:
         if selected_postcodes:  # Only filter if some postcodes are selected
             df = df[df['SHORT_POSTCODE'].str.strip('').isin(selected_postcodes)]
+        else:
+            return pd.DataFrame()
         
     elif group_method == 'Customer Level' and not all_customers:
         if selected_customers:  # Only filter if some customers are selected
             df = df[df['NAME'].str.strip('').isin(selected_customers)]
+        else :
+            return pd.DataFrame()
 
     return df
         
@@ -682,16 +685,17 @@ div.stDownloadButton > button:hover {
 # Simulation tab
 def run_cost_optimization_simulation(parameters):
 
-    print(parameters)  ## checkkk
     start_date= parameters['start_date']
     end_date= parameters['end_date']
-    # start_time = time.time()
-    df, rate_card_ambient, rate_card_ambcontrol = load_data()
+
+    df = pd.read_excel('Complete Input.xlsx', sheet_name='Sheet1')
+    df['SHIPPED_DATE'] = pd.to_datetime(df['SHIPPED_DATE'], dayfirst=True)
     df= get_filtered_data(parameters, df)
     
     if len(df)==0:
         st.write("No data is available for the selected parameters., please try agian !")
         return None
+    
     # Prepare data for simulation
     df['GROUP'] = df[group_field]
     grouped = df.groupby(['PROD TYPE', 'GROUP'])
@@ -880,7 +884,9 @@ def run_cost_optimization_simulation(parameters):
 # # Calculation tab
 def cost_calculation(parameters, best_params):
     
-    df, rate_card_ambient, rate_card_ambcontrol = load_data()
+    df = pd.read_excel('Complete Input.xlsx', sheet_name='Sheet1')
+    df['SHIPPED_DATE'] = pd.to_datetime(df['SHIPPED_DATE'], dayfirst=True)
+    
     df= get_filtered_data(parameters, df)
     start_date= parameters['start_date']
     end_date= parameters['end_date']
