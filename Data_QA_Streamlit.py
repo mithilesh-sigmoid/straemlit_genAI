@@ -791,9 +791,10 @@ def main():
                 )
             elif intent == 'Cost Optimization':
                 st.write("It is cost optimization prompt\n")
-
+                
                 parameters= parameter_values.get_parameters_values(api_key, query)
-                print("parameters: ", parameters)
+                st.write(parameters)  ## checkkk
+                
                 results= cost_cosnsolidation.run_cost_optimization_simulation(parameters)
                 cost_cosnsolidation.cost_calculation(parameters, results['params'])
     
