@@ -52,7 +52,6 @@ def get_filtered_data(parameters, df):
   
     if group_method == 'Post Code Level':
         all_postcodes = parameters['all_post_code']
-    
         
         if not all_postcodes:
             selected_postcodes = parameters['selected_postcodes']
@@ -74,6 +73,9 @@ def get_filtered_data(parameters, df):
             df = df[df['NAME'].str.strip('').isin(selected_customers)]
         else :
             return pd.DataFrame()
+    
+    if len(df)>0:
+        st.write("minimum date: ", df['SHIPPED_DATE'].min(), "maximum date: ", df['SHIPPED_DATE'].max())
 
     return df
         
@@ -886,7 +888,7 @@ def cost_calculation(parameters, best_params):
     
     df = pd.read_excel('Complete Input.xlsx', sheet_name='Sheet1')
     df['SHIPPED_DATE'] = pd.to_datetime(df['SHIPPED_DATE'], dayfirst=True)
-    
+
     df= get_filtered_data(parameters, df)
     start_date= parameters['start_date']
     end_date= parameters['end_date']
